@@ -77,10 +77,12 @@ COPY docs/ ./docs/
 COPY resource/ ./resource/
 COPY web/ ./web/
 COPY shared/ ./shared/
+COPY locale/ ./locale/
 COPY scripts/ ./scripts/
 COPY core/ ./core/
 
-RUN npm run build -w core
+RUN mkdir -p .github \
+    && npm run build -w core
 
 ##############################################################################
 # Stage: build-all
@@ -97,7 +99,8 @@ RUN echo "TXDEV_FXSERVER_PATH=${TXDEV_FXSERVER_PATH}" > .env \
 
 COPY . .
 
-RUN npm run build
+RUN mkdir -p .github \
+    && npm run build
 
 ##############################################################################
 # Output stages — minimal scratch images with only the built artefacts.

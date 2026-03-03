@@ -74,7 +74,7 @@ services:
       target: build-panel
       args:
         TXDEV_VITE_URL: ${TXDEV_VITE_URL:-http://localhost:40122}
-    command: ["sh", "-c", "cp -r /app/dist/panel /artifacts/panel"]
+    command: ["sh", "-c", "rm -rf /artifacts/panel && mkdir -p /artifacts && cp -r /app/dist/panel /artifacts/"]
     volumes:
       - ./dist:/artifacts
     networks:
