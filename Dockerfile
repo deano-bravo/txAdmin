@@ -78,6 +78,7 @@ COPY resource/ ./resource/
 COPY web/ ./web/
 COPY shared/ ./shared/
 COPY locale/ ./locale/
+COPY locale/ ./locale/
 COPY scripts/ ./scripts/
 COPY core/ ./core/
 
