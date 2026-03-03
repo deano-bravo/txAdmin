@@ -81,6 +81,40 @@
       "group": "build",
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Docker: Build Image",
+      "type": "shell",
+      "command": "docker build --build-arg TX_VERSION=v0.0.0-dev -t txadmin:dev .",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Docker: Compose Up",
+      "type": "shell",
+      "command": "docker compose up -d --build",
+      "options": { "cwd": "${workspaceFolder}" },
+      "isBackground": true,
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Docker: Compose Down",
+      "type": "shell",
+      "command": "docker compose down",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Docker: E2E Build & Test",
+      "dependsOn": ["Docker: Build Image", "Test: All Workspaces"],
+      "dependsOrder": "sequence",
+      "group": "test",
+      "problemMatcher": []
     }
   ]
 }

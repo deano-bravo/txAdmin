@@ -19,10 +19,11 @@
 			"useApt": true
 		},
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {
-			"dockerDashComposeVersion": "v2"
+			"dockerDashComposeVersion": "v2",
+			"enableNonRootDocker": true,
+			"moby": true
 		},
-		"ghcr.io/devcontainers/features/git-lfs:1": {},
-		"ghcr.io/devcontainers-extra/features/mariadb:1": {}
+		"ghcr.io/devcontainers/features/git-lfs:1": {}
 	},
 
 	// ── Port Forwarding ─────────────────────────────────────────────────
@@ -43,6 +44,7 @@
 
 	// ── Lifecycle Commands ──────────────────────────────────────────────
 	"postCreateCommand": "npm install && npm run prepare && mkdir -p fxserver && [ -f .env ] || printf 'TXDEV_FXSERVER_PATH=%s/fxserver\nTXDEV_VITE_URL=http://localhost:40122\n' \"$(pwd)\" > .env",
+	"postStartCommand": "docker start txadmin-mariadb 2>/dev/null || docker run -d --name txadmin-mariadb --restart unless-stopped -e MARIADB_ROOT_PASSWORD=txadmin_root -e MARIADB_DATABASE=txadmin -e MARIADB_USER=txadmin -e MARIADB_PASSWORD=txadmin_dev -v txadmin-mariadb-data:/var/lib/mysql -v \"$(pwd)/docker/mariadb/my.cnf:/etc/mysql/conf.d/txadmin.cnf:ro\" -v \"$(pwd)/docker/mariadb/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro\" -p 3306:3306 mariadb:11.4",
 	"postAttachCommand": "git config --global --add safe.directory /workspaces/txAdmin",
 
 	// ── Environment Variables ───────────────────────────────────────────
@@ -50,7 +52,9 @@
 		"TXDEV_FXSERVER_PATH": "/workspaces/txAdmin/fxserver",
 		"TXDEV_VITE_URL": "http://localhost:40122",
 		"NODE_OPTIONS": "--max-old-space-size=4096",
-		"NVIDIA_VISIBLE_DEVICES": "all"
+		"NVIDIA_VISIBLE_DEVICES": "all",
+		"DOCKER_BUILDKIT": "1",
+		"COMPOSE_DOCKER_CLI_BUILD": "1"
 	},
 
 	// ── VS Code Customizations ──────────────────────────────────────────
@@ -165,6 +169,7 @@
 	// ── Mounts ──────────────────────────────────────────────────────────
 	// Persist npm cache across rebuilds
 	"mounts": [
-		"source=txadmin-npm-cache,target=/home/node/.npm,type=volume"
+		"source=txadmin-npm-cache,target=/home/node/.npm,type=volume",
+		"source=txadmin-docker-cache,target=/var/lib/docker,type=volume"
 	]
 }
