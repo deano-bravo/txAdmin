@@ -1,0 +1,136 @@
+# ============================================================================
+# txAdmin Docker Compose Stack
+# - txAdmin with NVIDIA CUDA runtime (precompiled, zero build latency)
+# - MariaDB 11.4 LTS with performance-tuned config
+# - Named volumes persisted across builds/restarts
+# ============================================================================
+
+services:
+  # --------------------------------------------------------------------------
+  # txAdmin — FiveM/RedM server management platform
+  # --------------------------------------------------------------------------
+  txadmin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        TX_VERSION: ${TX_VERSION:-v0.0.0-docker}
+    image: txadmin:latest
+    container_name: txadmin
+    restart: unless-stopped
+
+    ports:
+      - "${TXHOST_TXA_PORT:-40120}:40120"        # txAdmin web panel
+      - "${TXHOST_FXS_PORT:-30120}:30120/tcp"     # FXServer TCP
+      - "${TXHOST_FXS_PORT:-30120}:30120/udp"     # FXServer UDP
+
+    environment:
+      # txAdmin host configuration
+      TXHOST_DATA_PATH: /txdata
+      TXHOST_TXA_PORT: "40120"
+      TXHOST_FXS_PORT: "30120"
+      TXHOST_INTERFACE: 0.0.0.0
+      TXHOST_GAME_NAME: ${TXHOST_GAME_NAME:-fivem}
+      TXHOST_QUIET_MODE: ${TXHOST_QUIET_MODE:-false}
+
+      # Database defaults for game server deployer recipes (ESX/QBCore)
+      TXHOST_DEFAULT_DBHOST: mariadb
+      TXHOST_DEFAULT_DBPORT: "3306"
+      TXHOST_DEFAULT_DBUSER: txadmin
+      TXHOST_DEFAULT_DBPASS: ${MARIADB_PASSWORD:?Set MARIADB_PASSWORD in .env}
+      TXHOST_DEFAULT_DBNAME: txadmin
+
+      # Optional overrides
+      TXHOST_DEFAULT_CFXKEY: ${TXHOST_DEFAULT_CFXKEY:-}
+      TXHOST_API_TOKEN: ${TXHOST_API_TOKEN:-}
+
+      # NVIDIA runtime
+      NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+
+    volumes:
+      - txdata:/txdata           # txAdmin profiles, configs, player DB, logs
+      - node_cache:/root/.npm    # npm cache for faster image rebuilds
+
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:40120/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
+
+    # NVIDIA GPU passthrough — requires nvidia-container-toolkit on the host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, compute, utility]
+
+    networks:
+      - txadmin_net
+
+  # --------------------------------------------------------------------------
+  # MariaDB 11.4 LTS — Performance-tuned for game server workloads
+  # --------------------------------------------------------------------------
+  mariadb:
+    image: mariadb:11.4
+    container_name: txadmin-mariadb
+    restart: unless-stopped
+
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?Set MARIADB_ROOT_PASSWORD in .env}
+      MARIADB_DATABASE: txadmin
+      MARIADB_USER: txadmin
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:?Set MARIADB_PASSWORD in .env}
+
+    volumes:
+      # Persistent database storage — survives container rebuilds
+      - mariadb_data:/var/lib/mysql
+      # Performance-tuned configuration
+      - ./docker/mariadb/my.cnf:/etc/mysql/conf.d/txadmin.cnf:ro
+      # Initialization script (runs only on first start with empty volume)
+      - ./docker/mariadb/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost", "-u", "root", "-p${MARIADB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+
+    # Expose to internal network only — not published to host
+    expose:
+      - "3306"
+
+    networks:
+      - txadmin_net
+
+# ============================================================================
+# Named Volumes — ALL persist across docker compose down/up and image rebuilds
+# ============================================================================
+volumes:
+  txdata:
+    name: txadmin_data
+    driver: local
+
+  node_cache:
+    name: txadmin_npm_cache
+    driver: local
+
+  mariadb_data:
+    name: txadmin_mariadb_data
+    driver: local
+
+# ============================================================================
+# Network — Isolated bridge for inter-service communication
+# ============================================================================
+networks:
+  txadmin_net:
+    name: txadmin_network
+    driver: bridge

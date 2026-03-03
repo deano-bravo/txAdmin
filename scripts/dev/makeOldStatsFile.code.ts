@@ -33,7 +33,7 @@ export default (sourceFiles: string[], targetFileName: string) => {
         console.log('fileData.log.length:', fileData.log.length);
         for (const log of fileData.log) {
             const resKicks = new MultipleCounter();
-            const drops = log.dropTypes.map(([type, count]): [string, number] | false => {
+            const drops = log.dropTypes.map(([type, count]: [string, number]): [string, number] | false => {
                 if (type === 'user-initiated') {
                     return ['player', count]
                 } else if (type === 'server-initiated') {
@@ -49,7 +49,7 @@ export default (sourceFiles: string[], targetFileName: string) => {
                 } else {
                     return [type, count];
                 }
-            }).filter((x): x is [string, number] => Array.isArray(x));
+            }).filter((x: [string, number] | false): x is [string, number] => Array.isArray(x));
 
 
             logCounters.push({
