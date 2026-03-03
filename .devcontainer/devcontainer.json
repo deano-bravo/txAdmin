@@ -3,7 +3,7 @@
 
   "build": {
     "context": "..",
-    "dockerfile": ".devcontainer/Dockerfile"
+    "dockerfile": "Dockerfile"
   },
 
   "workspaceFolder": "/workspace",
@@ -52,8 +52,8 @@
         "editor.codeActionsOnSave": {
           "source.fixAll.eslint": "explicit"
         },
-        "typescript.tsdk": "node_modules/typescript/lib",
-        "typescript.enablePromptUseWorkspaceTsdk": true,
+        "js/ts.tsdk.path": "node_modules/typescript/lib",
+        "js/ts.tsdk.promptToUseWorkspaceVersion": true,
         "eslint.workingDirectories": [
           { "directory": "core", "changeProcessCWD": true },
           { "directory": "panel", "changeProcessCWD": true },
