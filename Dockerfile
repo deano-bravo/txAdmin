@@ -81,6 +81,7 @@ COPY locale/ ./locale/
 COPY scripts/ ./scripts/
 COPY core/ ./core/
 
+RUN mkdir -p .github
 RUN mkdir -p .github \
     && npm run build -w core
 
