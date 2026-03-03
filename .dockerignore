@@ -1,0 +1,16 @@
+node_modules/
+dist/
+tmp_core_tsc/
+.tsc/
+.git/
+.github/
+.husky/
+.env
+.env.*
+*.log
+.reports/
+bundle_size_report.html
+.runtime/
+db/
+cache/
+*.ignore.*
