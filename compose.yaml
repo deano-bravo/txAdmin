@@ -88,7 +88,7 @@ services:
       target: build-nui
       args:
         TXDEV_FXSERVER_PATH: ${TXDEV_FXSERVER_PATH:-/tmp/fxserver}
-    command: ["sh", "-c", "cp -r /app/dist/nui /artifacts/nui"]
+    command: ["sh", "-c", "rm -rf /artifacts/nui && mkdir -p /artifacts && cp -r /app/dist/nui /artifacts/"]
     volumes:
       - ./dist:/artifacts
     networks:
