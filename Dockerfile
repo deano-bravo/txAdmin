@@ -52,12 +52,6 @@ FROM deps AS builder
 # Copy full source tree on top of cached deps
 COPY . .
 
-# The nui and panel vite configs call process.loadEnvFile('../.env') and check
-# for TXDEV_FXSERVER_PATH. Production builds don't use the path, but the
-# top-level guard exits if the var is missing. Provide a stub .env so the
-# build proceeds.
-RUN echo 'TXDEV_FXSERVER_PATH=/tmp' > .env
-
 # Run the full monorepo build:
 #   1. nui   (Vite → dist/nui/)
 #   2. panel (Vite → dist/panel/)
@@ -116,7 +110,7 @@ COPY --from=builder --chown=txadmin:txadmin /app/panel/package.json ./panel/
 COPY --from=builder --chown=txadmin:txadmin /app/shared/package.json ./shared/
 
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --omit=dev --ignore-scripts 2>/dev/null || true
+    npm ci --omit=dev --ignore-scripts
 
 # Copy shared utilities (runtime imports)
 COPY --from=builder --chown=txadmin:txadmin /app/shared ./shared

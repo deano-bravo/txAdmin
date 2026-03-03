@@ -5,14 +5,9 @@ import react from '@vitejs/plugin-react-swc';
 // import tsconfigPaths from 'vite-tsconfig-paths';
 import { licenseBanner } from '../scripts/build/utils';
 import { parseTxDevEnv } from '../shared/txDevEnv';
-process.loadEnvFile('../.env');
+try { process.loadEnvFile('../.env'); } catch {}
 
-//Check if TXDEV_VITE_URL is set
 const txDevEnv = parseTxDevEnv();
-if (!txDevEnv.VITE_URL) {
-    console.error('Missing TXDEV_VITE_URL env variable.');
-    process.exit(1);
-}
 
 
 const baseConfig = {

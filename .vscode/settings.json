@@ -1,3 +1,65 @@
 {
-    "js/ts.tsdk.path": "node_modules/typescript/lib"
+    // TypeScript
+    "js/ts.tsdk.path": "node_modules/typescript/lib",
+    "js/ts.tsdk.promptToUseWorkspaceVersion": true,
+    "js/ts.preferences.importModuleSpecifier": "non-relative",
+    "js/ts.suggest.autoImports": true,
+
+    // Editor
+    "editor.formatOnSave": false,
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": "explicit"
+    },
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.rulers": [120],
+    "editor.bracketPairColorization.enabled": true,
+
+    // ESLint
+    "eslint.workingDirectories": [
+        { "directory": "core", "changeProcessCWD": true },
+        { "directory": "panel", "changeProcessCWD": true },
+        { "directory": "nui", "changeProcessCWD": true }
+    ],
+    "eslint.validate": [
+        "javascript",
+        "typescript",
+        "typescriptreact"
+    ],
+
+    // Lua
+    "Lua.runtime.version": "Lua 5.4",
+    "Lua.diagnostics.disable": ["lowercase-global"],
+    "Lua.workspace.checkThirdParty": false,
+
+    // Files
+    "files.exclude": {
+        "**/.tsc": true,
+        "**/node_modules": true,
+        "dist": true,
+        ".reports": true
+    },
+    "files.watcherExclude": {
+        "**/.tsc/**": true,
+        "**/node_modules/**": true,
+        "**/dist/**": true,
+        "**/.git/objects/**": true
+    },
+    "search.exclude": {
+        "**/.tsc": true,
+        "**/dist": true,
+        "**/node_modules": true,
+        "**/locale/*.json": true
+    },
+
+    // Testing
+    "testing.automaticallyOpenPeekView": "never",
+
+    // Terminal
+    "terminal.integrated.defaultProfile.linux": "bash",
+
+    // Git
+    "git.autofetch": true,
+    "git.enableSmartCommit": true
 }
