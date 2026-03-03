@@ -1,9 +1,11 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/typescript-node
 {
-	"name": "Node.js & TypeScript",
+	"name": "txAdmin Dev",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
 	"image": "mcr.microsoft.com/devcontainers/typescript-node:4-24-trixie",
+
+	// ── Dev Container Features ──────────────────────────────────────────
 	"features": {
 		"ghcr.io/devcontainers/features/nvidia-cuda:3": {
 			"installCudnn": true,
@@ -15,21 +17,150 @@
 		},
 		"ghcr.io/prulloac/devcontainer-features/lua:1": {
 			"useApt": true
+		},
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {
+			"dockerDashComposeVersion": "v2"
+		},
+		"ghcr.io/devcontainers/features/git-lfs:1": {}
+	},
+
+	// ── Port Forwarding ─────────────────────────────────────────────────
+	"forwardPorts": [
+		40120,
+		40121,
+		40122,
+		30120
+	],
+	"portsAttributes": {
+		"40120": { "label": "txAdmin Panel", "onAutoForward": "notify" },
+		"40121": { "label": "NUI Vite Dev", "onAutoForward": "silent" },
+		"40122": { "label": "Panel Vite Dev", "onAutoForward": "openBrowser" },
+		"30120": { "label": "FXServer", "onAutoForward": "ignore" }
+	},
+
+	// ── Lifecycle Commands ──────────────────────────────────────────────
+	"postCreateCommand": "npm install && npm run prepare",
+	"postAttachCommand": "git config --global --add safe.directory /workspaces/txAdmin",
+
+	// ── Environment Variables ───────────────────────────────────────────
+	"containerEnv": {
+		"TXDEV_VITE_URL": "http://localhost:40122",
+		"NODE_OPTIONS": "--max-old-space-size=4096",
+		"NVIDIA_VISIBLE_DEVICES": "all"
+	},
+
+	// ── VS Code Customizations ──────────────────────────────────────────
+	"customizations": {
+		"vscode": {
+			"settings": {
+				// TypeScript
+				"js/ts.tsdk.path": "node_modules/typescript/lib",
+				"js/ts.tsdk.promptToUseWorkspaceVersion": true,
+				"js/ts.preferences.importModuleSpecifier": "non-relative",
+				"js/ts.suggest.autoImports": true,
+
+				// Editor
+				"editor.formatOnSave": false,
+				"editor.defaultFormatter": "dbaeumer.vscode-eslint",
+				"editor.codeActionsOnSave": {
+					"source.fixAll.eslint": "explicit"
+				},
+				"editor.tabSize": 4,
+				"editor.insertSpaces": true,
+				"editor.rulers": [120],
+				"editor.bracketPairColorization.enabled": true,
+
+				// ESLint
+				"eslint.workingDirectories": [
+					{ "directory": "core", "changeProcessCWD": true },
+					{ "directory": "panel", "changeProcessCWD": true },
+					{ "directory": "nui", "changeProcessCWD": true }
+				],
+				"eslint.validate": [
+					"javascript",
+					"typescript",
+					"typescriptreact"
+				],
+
+				// Lua
+				"Lua.runtime.version": "Lua 5.4",
+				"Lua.diagnostics.disable": ["lowercase-global"],
+				"Lua.workspace.checkThirdParty": false,
+
+				// Files
+				"files.exclude": {
+					"**/.tsc": true,
+					"**/node_modules": true,
+					"dist": true,
+					".reports": true
+				},
+				"files.watcherExclude": {
+					"**/.tsc/**": true,
+					"**/node_modules/**": true,
+					"**/dist/**": true,
+					"**/.git/objects/**": true
+				},
+				"search.exclude": {
+					"**/.tsc": true,
+					"**/dist": true,
+					"**/node_modules": true,
+					"**/locale/*.json": true
+				},
+
+				// Testing
+				"testing.automaticallyOpenPeekView": "never",
+
+				// Terminal
+				"terminal.integrated.defaultProfile.linux": "bash",
+				"terminal.integrated.cwd": "/workspaces/txAdmin",
+
+				// Git
+				"git.autofetch": true,
+				"git.enableSmartCommit": true
+			},
+
+			"extensions": [
+				// Core languages
+				"dbaeumer.vscode-eslint",
+				"sumneko.lua",
+
+				// TypeScript / React
+				"ms-vscode.vscode-typescript-next",
+				"dsznajder.es7-react-js-snippets",
+				"bradlc.vscode-tailwindcss",
+
+				// Testing
+				"vitest.explorer",
+
+				// Git & collaboration
+				"eamodio.gitlens",
+				"github.vscode-pull-request-github",
+
+				// DX utilities
+				"christian-kohler.path-intellisense",
+				"usernamehw.errorlens",
+				"gruntfuggly.todo-tree",
+				"mikestead.dotenv",
+
+				// Container & Docker
+				"ms-azuretools.vscode-docker",
+
+				// Misc
+				"editorconfig.editorconfig",
+				"redhat.vscode-yaml"
+			]
 		}
-	}
+	},
 
-	// Features to add to the dev container. More info: https://containers.dev/features.
-	// "features": {},
+	// ── Host Requirements ───────────────────────────────────────────────
+	"hostRequirements": {
+		"memory": "8gb",
+		"cpus": 4
+	},
 
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
-
-	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "yarn install",
-
-	// Configure tool-specific properties.
-	// "customizations": {},
-
-	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-	// "remoteUser": "root"
+	// ── Mounts ──────────────────────────────────────────────────────────
+	// Persist npm cache across rebuilds
+	"mounts": [
+		"source=txadmin-npm-cache,target=/home/node/.npm,type=volume"
+	]
 }
