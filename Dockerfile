@@ -22,7 +22,7 @@ COPY panel/package.json ./panel/
 COPY nui/package.json ./nui/
 COPY shared/package.json ./shared/
 
-RUN --mount=type=cache,target=/npm-cache \
+RUN --mount=type=cache,target=/npm-cache,sharing=locked \
     npm ci --cache /npm-cache
 
 ##############################################################################
@@ -78,11 +78,9 @@ COPY resource/ ./resource/
 COPY web/ ./web/
 COPY shared/ ./shared/
 COPY locale/ ./locale/
-COPY locale/ ./locale/
 COPY scripts/ ./scripts/
 COPY core/ ./core/
 
-RUN mkdir -p .github
 RUN mkdir -p .github \
     && npm run build -w core
 

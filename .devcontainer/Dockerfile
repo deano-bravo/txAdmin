@@ -26,7 +26,7 @@ COPY panel/package.json ./panel/
 COPY nui/package.json ./nui/
 COPY shared/package.json ./shared/
 
-RUN --mount=type=cache,target=/npm-cache \
+RUN --mount=type=cache,target=/npm-cache,sharing=locked \
     npm ci --cache /npm-cache
 
 USER node
