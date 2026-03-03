@@ -1,0 +1,86 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Panel: Vite Dev",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": { "cwd": "${workspaceFolder}/panel" },
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "VITE",
+          "endsPattern": "ready in"
+        }
+      },
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "dedicated", "group": "dev" }
+    },
+    {
+      "label": "Core: Dev Builder",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": { "cwd": "${workspaceFolder}/core" },
+      "isBackground": true,
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "dedicated", "group": "dev" }
+    },
+    {
+      "label": "NUI: Browser Dev",
+      "type": "shell",
+      "command": "npm run browser",
+      "options": { "cwd": "${workspaceFolder}/nui" },
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "VITE",
+          "endsPattern": "ready in"
+        }
+      },
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "dedicated", "group": "dev" }
+    },
+    {
+      "label": "Dev: Full Stack",
+      "dependsOn": ["Panel: Vite Dev", "Core: Dev Builder"],
+      "dependsOrder": "parallel",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: All Workspaces",
+      "type": "shell",
+      "command": "npm run test --workspaces",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "test",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Typecheck: All Workspaces",
+      "type": "shell",
+      "command": "npm run typecheck --workspaces",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "test",
+      "problemMatcher": "$tsc",
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Build: Production",
+      "type": "shell",
+      "command": "GITHUB_REF='refs/tags/v9.9.9' npm run build",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    }
+  ]
+}

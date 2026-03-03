@@ -50,7 +50,9 @@ services:
 
     volumes:
       - txdata:/txdata           # txAdmin profiles, configs, player DB, logs
-      - node_cache:/root/.npm    # npm cache for faster image rebuilds
+
+    tmpfs:
+      - /tmp                     # Ephemeral scratch space (read_only-friendly)
 
     depends_on:
       mariadb:
@@ -63,10 +65,28 @@ services:
       start_period: 60s
       retries: 3
 
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE        # Allow binding to privileged ports (30120)
+
     # NVIDIA GPU passthrough — requires nvidia-container-toolkit on the host
     deploy:
       resources:
+        limits:
+          cpus: "4.0"
+          memory: 4G
         reservations:
+          cpus: "1.0"
+          memory: 1G
           devices:
             - driver: nvidia
               count: all
@@ -100,9 +120,27 @@ services:
     healthcheck:
       test: ["CMD", "mariadb-admin", "ping", "-h", "localhost", "-u", "root", "-p${MARIADB_ROOT_PASSWORD}"]
       interval: 10s
-      timeout: 5s
+      timeout: 10s
       start_period: 30s
       retries: 5
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    security_opt:
+      - no-new-privileges:true
+
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
 
     # Expose to internal network only — not published to host
     expose:
@@ -117,10 +155,6 @@ services:
 volumes:
   txdata:
     name: txadmin_data
-    driver: local
-
-  node_cache:
-    name: txadmin_npm_cache
     driver: local
 
   mariadb_data:

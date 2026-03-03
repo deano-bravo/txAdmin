@@ -8,8 +8,10 @@ CREATE DATABASE IF NOT EXISTS `txadmin`
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
 
--- Grant full privileges to the txadmin service user
+-- Grant least-privilege access to the txadmin service user.
 -- The user is created by MARIADB_USER / MARIADB_PASSWORD env vars;
--- this ensures it has access to the database.
-GRANT ALL PRIVILEGES ON `txadmin`.* TO 'txadmin'@'%';
+-- this ensures it has access to the database without admin capabilities.
+-- Intentionally excludes: DROP, GRANT, SUPER, PROCESS, FILE
+GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX, EXECUTE, REFERENCES
+    ON `txadmin`.* TO 'txadmin'@'%';
 FLUSH PRIVILEGES;

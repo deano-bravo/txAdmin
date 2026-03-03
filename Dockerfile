@@ -74,11 +74,12 @@ FROM nvidia/cuda:12.5.1-cudnn-runtime-ubuntu22.04 AS runtime
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install only Node.js runtime — no compilers, no dev headers
+# Install only Node.js runtime + tini (PID 1 init) — no compilers, no dev headers
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
         gnupg \
+        tini \
     && mkdir -p /etc/apt/keyrings \
     && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
         | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
@@ -87,6 +88,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get update \
     && apt-get install -y --no-install-recommends nodejs \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for runtime security
+RUN groupadd -r txadmin && useradd -r -g txadmin -d /app -s /sbin/nologin txadmin
 
 # NVIDIA runtime environment — ensures GPU is visible and CUDA libs are on path
 ENV NVIDIA_VISIBLE_DEVICES=all \
@@ -102,23 +106,23 @@ ENV TXHOST_DATA_PATH=/txdata \
 WORKDIR /app
 
 # Copy precompiled build output from builder stage
-COPY --from=builder /app/dist ./dist
+COPY --from=builder --chown=txadmin:txadmin /app/dist ./dist
 
 # Copy runtime package manifests and install production-only deps
-COPY --from=builder /app/package.json /app/package-lock.json ./
-COPY --from=builder /app/core/package.json ./core/
-COPY --from=builder /app/nui/package.json ./nui/
-COPY --from=builder /app/panel/package.json ./panel/
-COPY --from=builder /app/shared/package.json ./shared/
+COPY --from=builder --chown=txadmin:txadmin /app/package.json /app/package-lock.json ./
+COPY --from=builder --chown=txadmin:txadmin /app/core/package.json ./core/
+COPY --from=builder --chown=txadmin:txadmin /app/nui/package.json ./nui/
+COPY --from=builder --chown=txadmin:txadmin /app/panel/package.json ./panel/
+COPY --from=builder --chown=txadmin:txadmin /app/shared/package.json ./shared/
 
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --omit=dev --ignore-scripts 2>/dev/null || true
 
 # Copy shared utilities (runtime imports)
-COPY --from=builder /app/shared ./shared
+COPY --from=builder --chown=txadmin:txadmin /app/shared ./shared
 
-# Create persistent data directory
-RUN mkdir -p /txdata
+# Create persistent data directory with correct ownership
+RUN mkdir -p /txdata && chown txadmin:txadmin /txdata
 
 # Expose txAdmin web panel + FXServer game port
 EXPOSE 40120
@@ -129,8 +133,12 @@ EXPOSE 30120/udp
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
     CMD curl -sf http://localhost:40120/ || exit 1
 
+# Switch to non-root user
+USER txadmin
+
 # Run from the dist directory where entrypoint.js lives
 WORKDIR /app/dist
 
-ENTRYPOINT ["node"]
-CMD ["entrypoint.js"]
+# tini handles signal forwarding and zombie process reaping as PID 1
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["node", "entrypoint.js"]

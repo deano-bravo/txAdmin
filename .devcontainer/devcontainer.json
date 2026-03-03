@@ -21,7 +21,8 @@
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {
 			"dockerDashComposeVersion": "v2"
 		},
-		"ghcr.io/devcontainers/features/git-lfs:1": {}
+		"ghcr.io/devcontainers/features/git-lfs:1": {},
+		"ghcr.io/devcontainers-extra/features/mariadb:1": {}
 	},
 
 	// ── Port Forwarding ─────────────────────────────────────────────────
@@ -29,21 +30,24 @@
 		40120,
 		40121,
 		40122,
-		30120
+		30120,
+		3306
 	],
 	"portsAttributes": {
 		"40120": { "label": "txAdmin Panel", "onAutoForward": "notify" },
 		"40121": { "label": "NUI Vite Dev", "onAutoForward": "silent" },
 		"40122": { "label": "Panel Vite Dev", "onAutoForward": "openBrowser" },
-		"30120": { "label": "FXServer", "onAutoForward": "ignore" }
+		"30120": { "label": "FXServer", "onAutoForward": "ignore" },
+		"3306":  { "label": "MariaDB", "onAutoForward": "ignore" }
 	},
 
 	// ── Lifecycle Commands ──────────────────────────────────────────────
-	"postCreateCommand": "npm install && npm run prepare",
+	"postCreateCommand": "npm install && npm run prepare && mkdir -p fxserver && [ -f .env ] || printf 'TXDEV_FXSERVER_PATH=%s/fxserver\nTXDEV_VITE_URL=http://localhost:40122\n' \"$(pwd)\" > .env",
 	"postAttachCommand": "git config --global --add safe.directory /workspaces/txAdmin",
 
 	// ── Environment Variables ───────────────────────────────────────────
 	"containerEnv": {
+		"TXDEV_FXSERVER_PATH": "/workspaces/txAdmin/fxserver",
 		"TXDEV_VITE_URL": "http://localhost:40122",
 		"NODE_OPTIONS": "--max-old-space-size=4096",
 		"NVIDIA_VISIBLE_DEVICES": "all"

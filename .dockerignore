@@ -36,8 +36,17 @@ shared/node_modules
 Dockerfile
 docker-compose.yml
 
+# Tests & coverage (not needed in production image)
+*.test.ts
+*.spec.ts
+coverage/
+.coverage/
+core/testing/
+
 # Misc
 *.md
 !README.md
 LICENSE
 commitlint.config.cjs
+.editorconfig
+.luarc.json
