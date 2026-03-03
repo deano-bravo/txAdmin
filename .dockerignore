@@ -14,3 +14,5 @@ bundle_size_report.html
 db/
 cache/
 *.ignore.*
+locale/
+scripts/dev/
