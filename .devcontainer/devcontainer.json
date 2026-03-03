@@ -1,0 +1,89 @@
+{
+  "name": "txAdmin Dev",
+
+  "build": {
+    "context": "..",
+    "dockerfile": ".devcontainer/Dockerfile"
+  },
+
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+
+  // Features are defined in devcontainer-features.json (authoritative source).
+  // Update that file first, then mirror the "features" object below.
+  // devcontainer-features.json is also used directly by CI pre-build pipelines.
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // TypeScript / JS
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-typescript-next",
+        "usernamehw.errorlens",
+        "christian-kohler.path-intellisense",
+
+        // React / Vite / Tailwind
+        "antfu.vite",
+        "bradlc.vscode-tailwindcss",
+        "dsznajder.es7-react-js-snippets",
+
+        // Git / GitHub
+        "eamodio.gitlens",
+        "github.vscode-pull-request-github",
+        "github.copilot",
+        "github.copilot-chat",
+
+        // Docker
+        "ms-azuretools.vscode-docker",
+
+        // Utilities
+        "streetsidesoftware.code-spell-checker",
+        "gruntfuggly.todo-tree",
+        "editorconfig.editorconfig"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        },
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "typescript.enablePromptUseWorkspaceTsdk": true,
+        "eslint.workingDirectories": [
+          { "directory": "core", "changeProcessCWD": true },
+          { "directory": "panel", "changeProcessCWD": true },
+          { "directory": "nui", "changeProcessCWD": true }
+        ],
+        "tailwindCSS.includeLanguages": {
+          "typescriptreact": "html"
+        },
+        "files.exclude": {
+          "**/node_modules": true,
+          "**/dist": true
+        }
+      }
+    }
+  },
+
+  // txAdmin core port + Vite panel dev server
+  "forwardPorts": [40120, 40122],
+  "portsAttributes": {
+    "40120": { "label": "txAdmin core", "onAutoForward": "notify" },
+    "40122": { "label": "Panel dev server", "onAutoForward": "openBrowser" }
+  },
+
+  "remoteEnv": {
+    "TXDEV_FXSERVER_PATH": "/tmp/fxserver",
+    "TXDEV_VITE_URL": "http://localhost:40122"
+  },
+
+  // Re-run npm ci in case the lockfile changed since the image was built
+  "postStartCommand": "npm ci",
+
+  "remoteUser": "node"
+}

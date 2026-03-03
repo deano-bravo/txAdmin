@@ -1,0 +1,8 @@
+{
+  "$schema": "https://containers.dev/implementors/features.schema.json",
+  "$comment": "Authoritative source for Dev Container features. devcontainer.json mirrors the 'features' object from this file. Update here first, then copy into devcontainer.json. Used independently by CI pre-build pipelines: devcontainer build --config .devcontainer/devcontainer-features.json",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  }
+}
