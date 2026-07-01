@@ -1,52 +1,17 @@
-# Version control
-.git
-.gitignore
-.gitattributes
-
-# IDE / editor
-.vscode
-.idea
-*.swp
-*.swo
-
-# Dev container (not needed in production image)
-.devcontainer
-
-# Build artifacts (rebuilt inside Docker)
-dist
-.tsc
-tmp_core_tsc
-.reports
-
-# Dependencies (reinstalled inside Docker)
-node_modules
-core/node_modules
-panel/node_modules
-nui/node_modules
-shared/node_modules
-
-# Environment files (injected at runtime)
+node_modules/
+dist/
+tmp_core_tsc/
+.tsc/
+.git/
+.github/
+.husky/
 .env
 .env.*
-
-# CI/CD
-.github
-
-# Docker files (no recursion)
-Dockerfile
-docker-compose.yml
-
-# Tests & coverage (not needed in production image)
-*.test.ts
-*.spec.ts
-coverage/
-.coverage/
-core/testing/
-
-# Misc
-*.md
-!README.md
-LICENSE
-commitlint.config.cjs
-.editorconfig
-.luarc.json
+*.log
+.reports/
+bundle_size_report.html
+.runtime/
+db/
+cache/
+*.ignore.*
+scripts/dev/

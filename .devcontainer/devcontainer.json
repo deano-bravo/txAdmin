@@ -1,175 +1,89 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the
-// README at: https://github.com/devcontainers/templates/tree/main/src/typescript-node
 {
-	"name": "txAdmin Dev",
-	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/typescript-node:4-24-bookworm",
+  "name": "txAdmin Dev",
 
-	// ── Dev Container Features ──────────────────────────────────────────
-	"features": {
-		"ghcr.io/devcontainers/features/nvidia-cuda:3": {
-			"installCudnn": true,
-			"installCudnnDev": true,
-			"installNvtx": true,
-			"installToolkit": true,
-			"cudaVersion": "12.5",
-			"cudnnVersion": "automatic"
-		},
-		"ghcr.io/prulloac/devcontainer-features/lua:1": {
-			"useApt": true
-		},
-		"ghcr.io/devcontainers/features/docker-in-docker:2": {
-			"dockerDashComposeVersion": "v2",
-			"enableNonRootDocker": true,
-			"moby": true
-		},
-		"ghcr.io/devcontainers/features/git-lfs:1": {}
-	},
+  "build": {
+    "context": "..",
+    "dockerfile": "Dockerfile"
+  },
 
-	// ── Port Forwarding ─────────────────────────────────────────────────
-	"forwardPorts": [
-		40120,
-		40121,
-		40122,
-		30120,
-		3306
-	],
-	"portsAttributes": {
-		"40120": { "label": "txAdmin Panel", "onAutoForward": "notify" },
-		"40121": { "label": "NUI Vite Dev", "onAutoForward": "silent" },
-		"40122": { "label": "Panel Vite Dev", "onAutoForward": "openBrowser" },
-		"30120": { "label": "FXServer", "onAutoForward": "ignore" },
-		"3306":  { "label": "MariaDB", "onAutoForward": "ignore" }
-	},
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
 
-	// ── Lifecycle Commands ──────────────────────────────────────────────
-	"postCreateCommand": "npm install && npm run prepare && mkdir -p fxserver && [ -f .env ] || printf 'TXDEV_FXSERVER_PATH=%s/fxserver\nTXDEV_VITE_URL=http://localhost:40122\n' \"$(pwd)\" > .env",
-	"postStartCommand": "docker start txadmin-mariadb 2>/dev/null || docker run -d --name txadmin-mariadb --restart unless-stopped -e MARIADB_ROOT_PASSWORD=txadmin_root -e MARIADB_DATABASE=txadmin -e MARIADB_USER=txadmin -e MARIADB_PASSWORD=txadmin_dev -v txadmin-mariadb-data:/var/lib/mysql -v \"$(pwd)/docker/mariadb/my.cnf:/etc/mysql/conf.d/txadmin.cnf:ro\" -v \"$(pwd)/docker/mariadb/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro\" -p 3306:3306 mariadb:11.4",
-	"postAttachCommand": "git config --global --add safe.directory /workspaces/txAdmin",
+  // Features are defined in devcontainer-features.json (authoritative source).
+  // Update that file first, then mirror the "features" object below.
+  // devcontainer-features.json is also used directly by CI pre-build pipelines.
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
 
-	// ── Environment Variables ───────────────────────────────────────────
-	"containerEnv": {
-		"TXDEV_FXSERVER_PATH": "/workspaces/txAdmin/fxserver",
-		"TXDEV_VITE_URL": "http://localhost:40122",
-		"NODE_OPTIONS": "--max-old-space-size=4096",
-		"NVIDIA_VISIBLE_DEVICES": "all",
-		"DOCKER_BUILDKIT": "1",
-		"COMPOSE_DOCKER_CLI_BUILD": "1"
-	},
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // TypeScript / JS
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-typescript-next",
+        "usernamehw.errorlens",
+        "christian-kohler.path-intellisense",
 
-	// ── VS Code Customizations ──────────────────────────────────────────
-	"customizations": {
-		"vscode": {
-			"settings": {
-				// TypeScript
-				"js/ts.tsdk.path": "node_modules/typescript/lib",
-				"js/ts.tsdk.promptToUseWorkspaceVersion": true,
-				"js/ts.preferences.importModuleSpecifier": "non-relative",
-				"js/ts.suggest.autoImports": true,
+        // React / Vite / Tailwind
+        "antfu.vite",
+        "bradlc.vscode-tailwindcss",
+        "dsznajder.es7-react-js-snippets",
 
-				// Editor
-				"editor.formatOnSave": false,
-				"editor.defaultFormatter": "dbaeumer.vscode-eslint",
-				"editor.codeActionsOnSave": {
-					"source.fixAll.eslint": "explicit"
-				},
-				"editor.tabSize": 4,
-				"editor.insertSpaces": true,
-				"editor.rulers": [120],
-				"editor.bracketPairColorization.enabled": true,
+        // Git / GitHub
+        "eamodio.gitlens",
+        "github.vscode-pull-request-github",
+        "github.copilot",
+        "github.copilot-chat",
 
-				// ESLint
-				"eslint.workingDirectories": [
-					{ "directory": "core", "changeProcessCWD": true },
-					{ "directory": "panel", "changeProcessCWD": true },
-					{ "directory": "nui", "changeProcessCWD": true }
-				],
-				"eslint.validate": [
-					"javascript",
-					"typescript",
-					"typescriptreact"
-				],
+        // Docker
+        "ms-azuretools.vscode-docker",
 
-				// Lua
-				"Lua.runtime.version": "Lua 5.4",
-				"Lua.diagnostics.disable": ["lowercase-global"],
-				"Lua.workspace.checkThirdParty": false,
+        // Utilities
+        "streetsidesoftware.code-spell-checker",
+        "gruntfuggly.todo-tree",
+        "editorconfig.editorconfig"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        },
+        "js/ts.tsdk.path": "node_modules/typescript/lib",
+        "js/ts.tsdk.promptToUseWorkspaceVersion": true,
+        "eslint.workingDirectories": [
+          { "directory": "core", "changeProcessCWD": true },
+          { "directory": "panel", "changeProcessCWD": true },
+          { "directory": "nui", "changeProcessCWD": true }
+        ],
+        "tailwindCSS.includeLanguages": {
+          "typescriptreact": "html"
+        },
+        "files.exclude": {
+          "**/node_modules": true,
+          "**/dist": true
+        }
+      }
+    }
+  },
 
-				// Files
-				"files.exclude": {
-					"**/.tsc": true,
-					"**/node_modules": true,
-					"dist": true,
-					".reports": true
-				},
-				"files.watcherExclude": {
-					"**/.tsc/**": true,
-					"**/node_modules/**": true,
-					"**/dist/**": true,
-					"**/.git/objects/**": true
-				},
-				"search.exclude": {
-					"**/.tsc": true,
-					"**/dist": true,
-					"**/node_modules": true,
-					"**/locale/*.json": true
-				},
+  // txAdmin core port + Vite panel dev server
+  "forwardPorts": [40120, 40122],
+  "portsAttributes": {
+    "40120": { "label": "txAdmin core", "onAutoForward": "notify" },
+    "40122": { "label": "Panel dev server", "onAutoForward": "openBrowser" }
+  },
 
-				// Testing
-				"testing.automaticallyOpenPeekView": "never",
+  "remoteEnv": {
+    "TXDEV_FXSERVER_PATH": "/tmp/fxserver",
+    "TXDEV_VITE_URL": "http://localhost:40122"
+  },
 
-				// Terminal
-				"terminal.integrated.defaultProfile.linux": "bash",
-				"terminal.integrated.cwd": "/workspaces/txAdmin",
+  // Re-run npm ci in case the lockfile changed since the image was built
+  "postStartCommand": "npm ci",
 
-				// Git
-				"git.autofetch": true,
-				"git.enableSmartCommit": true
-			},
-
-			"extensions": [
-				// Core languages
-				"dbaeumer.vscode-eslint",
-				"sumneko.lua",
-
-				// TypeScript / React
-				"ms-vscode.vscode-typescript-next",
-				"dsznajder.es7-react-js-snippets",
-				"bradlc.vscode-tailwindcss",
-
-				// Testing
-				"vitest.explorer",
-
-				// Git & collaboration
-				"eamodio.gitlens",
-				"github.vscode-pull-request-github",
-
-				// DX utilities
-				"christian-kohler.path-intellisense",
-				"usernamehw.errorlens",
-				"gruntfuggly.todo-tree",
-				"mikestead.dotenv",
-
-				// Container & Docker
-				"ms-azuretools.vscode-docker",
-
-				// Misc
-				"editorconfig.editorconfig",
-				"redhat.vscode-yaml"
-			]
-		}
-	},
-
-	// ── Host Requirements ───────────────────────────────────────────────
-	"hostRequirements": {
-		"memory": "8gb",
-		"cpus": 4
-	},
-
-	// ── Mounts ──────────────────────────────────────────────────────────
-	// Persist npm cache across rebuilds
-	"mounts": [
-		"source=txadmin-npm-cache,target=/home/node/.npm,type=volume",
-		"source=txadmin-docker-cache,target=/var/lib/docker,type=volume"
-	]
+  "remoteUser": "node"
 }

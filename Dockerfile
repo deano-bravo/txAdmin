@@ -1,138 +1,118 @@
-# ============================================================================
-# txAdmin — Multi-stage Docker build with NVIDIA CUDA runtime baked in
-# All dependencies precompiled and cached as layers for instant subsequent builds
-# ============================================================================
 # syntax=docker/dockerfile:1
+#
+# Multi-target Dockerfile for txAdmin workspaces.
+# Build a specific workspace:  docker build --target panel .
+#                               docker build --target nui .
+#                               docker build --target core .
+# Build everything (default):  docker build .
+# Build all targets in parallel: docker buildx bake
 
-# ---------------------------------------------------------------------------
-# Stage 1: deps — Install ALL dependencies (cached until package files change)
-# ---------------------------------------------------------------------------
-FROM nvidia/cuda:12.5.1-cudnn-runtime-ubuntu22.04 AS deps
-
-# Prevent interactive prompts during package installation
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install Node.js 22.x, build tools for native modules, and system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates \
-        curl \
-        gnupg \
-        build-essential \
-        python3 \
-        git \
-    && mkdir -p /etc/apt/keyrings \
-    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
-        | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
-    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" \
-        > /etc/apt/sources.list.d/nodesource.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends nodejs \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+##############################################################################
+# Stage: deps
+# Installs all workspace dependencies. This layer is cached until any
+# package manifest changes. The BuildKit npm cache persists across builds.
+##############################################################################
+FROM node:22-alpine AS deps
 
 WORKDIR /app
 
-# Copy ONLY package manifests first — maximizes Docker layer cache.
-# This layer only rebuilds when dependencies change.
 COPY package.json package-lock.json ./
 COPY core/package.json ./core/
-COPY nui/package.json ./nui/
 COPY panel/package.json ./panel/
+COPY nui/package.json ./nui/
 COPY shared/package.json ./shared/
 
-# Install all dependencies (including devDependencies needed for build).
-# BuildKit cache mount keeps the npm cache across builds for faster reinstalls.
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --include=dev
+RUN --mount=type=cache,target=/npm-cache,sharing=locked \
+    npm ci --cache /npm-cache
 
-# ---------------------------------------------------------------------------
-# Stage 2: builder — Precompile EVERYTHING (cached until source changes)
-# ---------------------------------------------------------------------------
-FROM deps AS builder
+##############################################################################
+# Stage: build-panel
+# Builds only the Vite React panel. Invalidated by changes to panel/ or shared/.
+##############################################################################
+FROM deps AS build-panel
 
-# Copy full source tree on top of cached deps
+# .env must exist for process.loadEnvFile(); TXDEV_VITE_URL has a sensible default
+ARG TXDEV_VITE_URL=http://localhost:40122
+RUN echo "TXDEV_VITE_URL=${TXDEV_VITE_URL}" > .env
+
+COPY LICENSE ./
+COPY shared/ ./shared/
+COPY scripts/build/ ./scripts/build/
+COPY panel/ ./panel/
+
+RUN npm run build -w panel
+
+##############################################################################
+# Stage: build-nui
+# Builds only the NUI bundle. Invalidated by changes to nui/ or shared/.
+##############################################################################
+FROM deps AS build-nui
+
+# nui/vite.config.ts exits at config-load time when TXDEV_FXSERVER_PATH is unset
+ARG TXDEV_FXSERVER_PATH=/tmp/fxserver
+RUN echo "TXDEV_FXSERVER_PATH=${TXDEV_FXSERVER_PATH}" > .env
+
+COPY LICENSE ./
+COPY shared/ ./shared/
+COPY scripts/build/ ./scripts/build/
+COPY nui/ ./nui/
+
+RUN npm run build -w nui
+
+##############################################################################
+# Stage: build-core
+# Bundles the backend via esbuild and copies static artefacts.
+# Invalidated by changes to core/, shared/, scripts/, or static files.
+##############################################################################
+FROM deps AS build-core
+
+# scripts/build/publish.ts embeds this as the release version string.
+# Keep the default in sync with the GITHUB_REF variable in docker-bake.hcl.
+ARG GITHUB_REF=refs/tags/v9.9.9-dev
+RUN echo "" > .env
+
+COPY LICENSE ./
+COPY fxmanifest.lua entrypoint.js README.md dynamicAds2.json ./
+COPY docs/ ./docs/
+COPY resource/ ./resource/
+COPY web/ ./web/
+COPY shared/ ./shared/
+COPY locale/ ./locale/
+COPY scripts/ ./scripts/
+COPY core/ ./core/
+
+RUN mkdir -p .github \
+    && npm run build -w core
+
+##############################################################################
+# Stage: build-all
+# Full monorepo build — all three workspaces in one pass.
+##############################################################################
+FROM deps AS build-all
+
+ARG GITHUB_REF=refs/tags/v9.9.9-dev  # keep in sync with docker-bake.hcl
+ARG TXDEV_FXSERVER_PATH=/tmp/fxserver
+ARG TXDEV_VITE_URL=http://localhost:40122
+
+RUN echo "TXDEV_FXSERVER_PATH=${TXDEV_FXSERVER_PATH}" > .env \
+    && echo "TXDEV_VITE_URL=${TXDEV_VITE_URL}" >> .env
+
 COPY . .
 
-# Run the full monorepo build:
-#   1. nui   (Vite → dist/nui/)
-#   2. panel (Vite → dist/panel/)
-#   3. core  (esbuild → dist/core/index.js)
-#   4. license file generation
-# GITHUB_REF sets the version string baked into the build artifacts.
-ARG TX_VERSION=v0.0.0-docker
-RUN GITHUB_REF="refs/tags/${TX_VERSION}" npm run build
+RUN mkdir -p .github \
+    && npm run build
 
-# ---------------------------------------------------------------------------
-# Stage 3: runtime — Slim production image with NVIDIA runtime pre-baked
-# ---------------------------------------------------------------------------
-FROM nvidia/cuda:12.5.1-cudnn-runtime-ubuntu22.04 AS runtime
+##############################################################################
+# Output stages — minimal scratch images with only the built artefacts.
+##############################################################################
+FROM scratch AS panel
+COPY --from=build-panel /app/dist/panel /
 
-ENV DEBIAN_FRONTEND=noninteractive
+FROM scratch AS nui
+COPY --from=build-nui /app/dist/nui /
 
-# Install only Node.js runtime + tini (PID 1 init) — no compilers, no dev headers
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates \
-        curl \
-        gnupg \
-        tini \
-    && mkdir -p /etc/apt/keyrings \
-    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
-        | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
-    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" \
-        > /etc/apt/sources.list.d/nodesource.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends nodejs \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+FROM scratch AS core
+COPY --from=build-core /app/dist /
 
-# Create non-root user for runtime security
-RUN groupadd -r txadmin && useradd -r -g txadmin -d /app -s /sbin/nologin txadmin
-
-# NVIDIA runtime environment — ensures GPU is visible and CUDA libs are on path
-ENV NVIDIA_VISIBLE_DEVICES=all \
-    NVIDIA_DRIVER_CAPABILITIES=compute,utility \
-    LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH}
-
-# txAdmin runtime configuration defaults
-ENV TXHOST_DATA_PATH=/txdata \
-    TXHOST_TXA_PORT=40120 \
-    TXHOST_FXS_PORT=30120 \
-    TXHOST_INTERFACE=0.0.0.0
-
-WORKDIR /app
-
-# Copy precompiled build output from builder stage
-COPY --from=builder --chown=txadmin:txadmin /app/dist ./dist
-
-# Copy runtime package manifests and install production-only deps
-COPY --from=builder --chown=txadmin:txadmin /app/package.json /app/package-lock.json ./
-COPY --from=builder --chown=txadmin:txadmin /app/core/package.json ./core/
-COPY --from=builder --chown=txadmin:txadmin /app/nui/package.json ./nui/
-COPY --from=builder --chown=txadmin:txadmin /app/panel/package.json ./panel/
-COPY --from=builder --chown=txadmin:txadmin /app/shared/package.json ./shared/
-
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --omit=dev --ignore-scripts
-
-# Copy shared utilities (runtime imports)
-COPY --from=builder --chown=txadmin:txadmin /app/shared ./shared
-
-# Create persistent data directory with correct ownership
-RUN mkdir -p /txdata && chown txadmin:txadmin /txdata
-
-# Expose txAdmin web panel + FXServer game port
-EXPOSE 40120
-EXPOSE 30120/tcp
-EXPOSE 30120/udp
-
-# Healthcheck: verify txAdmin web panel is responding
-HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-    CMD curl -sf http://localhost:40120/ || exit 1
-
-# Switch to non-root user
-USER txadmin
-
-# Run from the dist directory where entrypoint.js lives
-WORKDIR /app/dist
-
-# tini handles signal forwarding and zombie process reaping as PID 1
-ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["node", "entrypoint.js"]
+FROM scratch AS all
+COPY --from=build-all /app/dist /

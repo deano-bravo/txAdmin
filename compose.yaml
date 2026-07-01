@@ -1,0 +1,110 @@
+# compose.yaml — txAdmin service orchestration.
+#
+# Profiles:
+#   dev     — live-reloading development environment (VS Code devcontainer)
+#   test    — run the full test suite inside an isolated container
+#   release — build all three workspace artefacts (panel, nui, core)
+#
+# Usage:
+#   docker compose --profile dev up          # start dev container
+#   docker compose --profile test run --rm test
+#   docker compose --profile release build   # produce release images
+
+name: txadmin
+
+networks:
+  txadmin:
+    driver: bridge
+
+# Shared build-arg defaults; override via environment or .env file
+x-build-args: &build-args
+  GITHUB_REF: ${GITHUB_REF:-refs/tags/v9.9.9-dev}
+  TXDEV_FXSERVER_PATH: ${TXDEV_FXSERVER_PATH:-/tmp/fxserver}
+  TXDEV_VITE_URL: ${TXDEV_VITE_URL:-http://localhost:40122}
+
+services:
+
+  # ── dev profile ──────────────────────────────────────────────────────────
+  # Hot-reload development workspace. Open this folder in VS Code Insiders and
+  # use "Reopen in Container" to attach. Alternatively:
+  #   docker compose --profile dev up
+  dev:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - .:/workspace:cached
+      - /workspace/node_modules   # anonymous volume keeps container node_modules
+    working_dir: /workspace
+    environment:
+      TXDEV_FXSERVER_PATH: ${TXDEV_FXSERVER_PATH:-/tmp/fxserver}
+      TXDEV_VITE_URL: ${TXDEV_VITE_URL:-http://localhost:40122}
+    ports:
+      - "40120:40120"   # txAdmin core
+      - "40122:40122"   # panel Vite dev server
+    networks:
+      - txadmin
+    # Keep the container alive; developers start individual watch processes from inside VS Code (Insiders)
+    command: ["sleep", "infinity"]
+    profiles: [dev]
+
+  # ── test profile ─────────────────────────────────────────────────────────
+  # Runs `npm test` across all workspaces inside the full build image.
+  # Exit code mirrors the test-runner outcome for use in CI pipelines.
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build-all
+      args:
+        <<: *build-args
+    command: ["npm", "test"]
+    networks:
+      - txadmin
+    profiles: [test]
+
+  # ── release profile ───────────────────────────────────────────────────────
+  # Builds and exports compiled artefacts for each workspace.
+  # Run:  docker compose --profile release build
+  # Then: docker compose --profile release up  (copies artefacts to ./dist)
+  panel-release:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build-panel
+      args:
+        TXDEV_VITE_URL: ${TXDEV_VITE_URL:-http://localhost:40122}
+    command: ["sh", "-c", "rm -rf /artifacts/panel && mkdir -p /artifacts && cp -r /app/dist/panel /artifacts/"]
+    volumes:
+      - ./dist:/artifacts
+    networks:
+      - txadmin
+    profiles: [release]
+
+  nui-release:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build-nui
+      args:
+        TXDEV_FXSERVER_PATH: ${TXDEV_FXSERVER_PATH:-/tmp/fxserver}
+    command: ["sh", "-c", "rm -rf /artifacts/nui && mkdir -p /artifacts && cp -r /app/dist/nui /artifacts/"]
+    volumes:
+      - ./dist:/artifacts
+    networks:
+      - txadmin
+    profiles: [release]
+
+  core-release:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build-core
+      args:
+        GITHUB_REF: ${GITHUB_REF:-refs/tags/v9.9.9-dev}
+    command: ["sh", "-c", "cp -r /app/dist/* /artifacts/"]
+    volumes:
+      - ./dist:/artifacts
+    networks:
+      - txadmin
+    profiles: [release]
